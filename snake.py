@@ -96,7 +96,7 @@ class Snake_game:
             reward = 10
         else:
             self.snake.pop()
-            reward = 0
+            reward = -0.1
 
         return self._get_state(), reward, self.done
 
