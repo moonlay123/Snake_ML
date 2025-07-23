@@ -35,49 +35,108 @@ class Snake_game:
             if apple not in self.snake:
                 return apple
     def _get_state(self):
-        state_grid = np.zeros((self.GRID_WIDTH, self.GRID_HEIGHT))
+        #state_grid = np.zeros((self.GRID_WIDTH, self.GRID_HEIGHT))
 
-        for segment in self.snake:
-            x, y = segment
-            if 0 <= x < self.GRID_WIDTH and 0 <= y < self.GRID_HEIGHT:
-                state_grid[x, y] = 1
+        #for segment in self.snake:
+        #    x, y = segment
+        #    if 0 <= x < self.GRID_WIDTH and 0 <= y < self.GRID_HEIGHT:
+        #        state_grid[x, y] = 1
 
-        apple_x, apple_y = self.apple
-        state_grid[apple_x, apple_y] = 2
+        #apple_x, apple_y = self.apple
+        #state_grid[apple_x, apple_y] = 2
 
-        state_grid[0, :] = -1
-        state_grid[-1, :] = -1
-        state_grid[:, 0] = -1
-        state_grid[:, -1] = -1
+        #state_grid[0, :] = -1
+        #state_grid[-1, :] = -1
+        #state_grid[:, 0] = -1
+        #state_grid[:, -1] = -1
 
-        return state_grid
-
-    def step(self, action=None):
-        if action is None:
-            for event in pygame.event.get():
-                if event.type == pygame.QUIT:
-                    pygame.quit()
-                    sys.exit()
-                if event.type == pygame.KEYDOWN:
-                    if event.key == pygame.K_UP and self.direction != (0, 1):
-                        self.direction = (0, -1)
-                    elif event.key == pygame.K_DOWN and self.direction != (0, -1):
-                        self.direction = (0, 1)
-                    elif event.key == pygame.K_LEFT and self.direction != (1, 0):
-                        self.direction = (-1, 0)
-                    elif event.key == pygame.K_RIGHT and self.direction != (-1, 0):
-                        self.direction = (1, 0)
-        else:
-            directions = [(1, 0), (0, 1), (-1, 0), (0, -1)]
-            idx = directions.index(self.direction)
-            new_dir = directions[(idx + action - 1) % 4]
-            self.direction = new_dir
-
+        #return state_grid
         head_x, head_y = self.snake[0]
-        new_head = (
-            head_x + self.direction[0],
-            head_y + self.direction[1]
-        )
+        apple_dx = self.apple[0] - head_x
+        apple_dy = self.apple[1] - head_y
+
+        obstacles = {
+            'left':  min((head_x - x) for x, y in self.snake if y == head_y and x < head_x) if any(y == head_y and x < head_x for x, y in self.snake) else head_x,
+            'right': min((x - head_x) for x, y in self.snake if y == head_y and x > head_x) if any(y == head_y and x > head_x for x, y in self.snake) else self.GRID_WIDTH - head_x - 1,
+            'up':    min((head_y - y) for x, y in self.snake if x == head_x and y < head_y) if any(x == head_x and y < head_y for x, y in self.snake) else head_y,
+            'down':  min((y - head_y) for x, y in self.snake if x == head_x and y > head_y) if any(x == head_x and y > head_y for x, y in self.snake) else self.GRID_HEIGHT - head_y - 1
+        }
+
+        return np.array([
+            head_x / self.GRID_WIDTH,
+            head_y / self.GRID_HEIGHT,
+            apple_dx / self.GRID_WIDTH,
+            apple_dy / self.GRID_HEIGHT,
+            obstacles['left'] / self.GRID_WIDTH,
+            obstacles['right'] / self.GRID_WIDTH,
+            obstacles['up'] / self.GRID_HEIGHT,
+            obstacles['down'] / self.GRID_HEIGHT,
+            int(self.direction == (1, 0)),
+            int(self.direction == (-1, 0)),
+            int(self.direction == (0, 1)),
+            int(self.direction == (0, -1))
+        ], dtype=np.float32)
+
+    #def step(self, action=None):
+    #    if action is None:
+    #        for event in pygame.event.get():
+    #            if event.type == pygame.QUIT:
+    #                pygame.quit()
+    #                sys.exit()
+    #            if event.type == pygame.KEYDOWN:
+    #                if event.key == pygame.K_UP and self.direction != (0, 1):
+    #                    self.direction = (0, -1)
+    #                elif event.key == pygame.K_DOWN and self.direction != (0, -1):
+    #                    self.direction = (0, 1)
+    #                elif event.key == pygame.K_LEFT and self.direction != (1, 0):
+    #                    self.direction = (-1, 0)
+    #                elif event.key == pygame.K_RIGHT and self.direction != (-1, 0):
+    #                    self.direction = (1, 0)
+    #    else:
+    #        directions = [(1, 0), (0, 1), (-1, 0), (0, -1)]
+    #        idx = directions.index(self.direction)
+    #        new_dir = directions[(idx + action - 1) % 4]
+    #        self.direction = new_dir
+#
+    #    head_x, head_y = self.snake[0]
+    #    new_head = (
+    #        head_x + self.direction[0],
+    #        head_y + self.direction[1]
+    #    )
+    #    if (new_head in self.snake[1:] or
+    #        new_head[0] < 0 or new_head[0] >= self.GRID_WIDTH
+    #        or new_head[1] < 0 or new_head[1] >= self.GRID_HEIGHT):
+    #        self.done = True
+    #        return self._get_state(), -10, True
+#
+    #    if new_head in self.snake:
+    #        self.done = True
+    #        return self._get_state(), -10, self.done
+#
+    #    self.snake.insert(0, new_head)
+#
+    #    if new_head == self.apple:
+    #        self.apple = self._place_apple()
+    #        self.score += 1
+    #        reward = 10
+    #    else:
+    #        self.snake.pop()
+    #        reward = 0
+#
+    #    return self._get_state(), reward, self.done
+
+    def step_ai(self, action):
+        if self.done:
+            return self._get_state(), 0, True
+
+        directions = [(1, 0), (0, 1), (-1, 0), (0, -1)]
+        idx = directions.index(self.direction)
+
+        new_dir = directions[(idx + action - 1) % 4]
+        self.direction = new_dir
+        head_x, head_y = self.snake[0]
+
+        new_head = (head_x + new_dir[0], head_y + new_dir[1])
         if (new_head in self.snake[1:] or
             new_head[0] < 0 or new_head[0] >= self.GRID_WIDTH
             or new_head[1] < 0 or new_head[1] >= self.GRID_HEIGHT):
@@ -90,38 +149,16 @@ class Snake_game:
 
         self.snake.insert(0, new_head)
 
+
+
         if new_head == self.apple:
             self.apple = self._place_apple()
             self.score += 1
-            reward = 10
+            reward = 20
         else:
             self.snake.pop()
             reward = -0.1
 
-        return self._get_state(), reward, self.done
-
-    def step_ai(self, action):
-        if self.done:
-                return self._get_state(), 0, True
-        directions = [(1, 0), (0, 1), (-1, 0), (0, -1)]
-        idx = directions.index(self.direction)
-        new_dir = directions[(idx + action - 1) % 4]
-        self.direction = new_dir
-        head_x, head_y = self.snake[0]
-        new_head = (head_x + new_dir[0], head_y + new_dir[1])
-        if (new_head in self.snake[1:] or
-            new_head[0] < 0 or new_head[0] >= self.GRID_WIDTH
-            or new_head[1] < 0 or new_head[1] >= self.GRID_HEIGHT):
-            self.done = True
-            return self._get_state(), -10, True
-        self.snake.insert(0, new_head)
-        if new_head == self.apple:
-            self.apple = self._place_apple()
-            self.score += 1
-            reward = 10
-        else:
-            self.snake.pop()
-            reward = -0.1
         self.steps += 1
         return self._get_state(), reward, self.done
     def render(self):
@@ -129,12 +166,12 @@ class Snake_game:
         for segment in self.snake:
             pygame.draw.rect(self.screen, (0, 255, 0),
                             (segment[0] * self.GRID_SIZE, segment[1] * self.GRID_SIZE,
-                             self.GRID_SIZE, self.GRID_SIZE))
+                             self.GRID_SIZE * 3 // 4, self.GRID_SIZE * 3 // 4))
         pygame.draw.rect(self.screen, (255, 0, 0),
                          (self.apple[0] * self.GRID_SIZE, self.apple[1] * self.GRID_SIZE,
-                          self.GRID_SIZE, self.GRID_SIZE))
+                          self.GRID_SIZE * 3 // 4, self.GRID_SIZE * 3 // 4))
         pygame.display.flip()
-        self.clock.tick(60)
+        self.clock.tick(50)
     def run(self):
         while True:
             self.step()

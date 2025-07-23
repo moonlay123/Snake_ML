@@ -1,6 +1,9 @@
+import sys, os
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
+os.environ['TF_ENABLE_ONEDNN_OPTS'] = '0'
 import snake
 from agent import train_dqn
-import sys
+import tensorflow as tf
 
 if __name__ == "__main__":
     if len(sys.argv) > 1:
